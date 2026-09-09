@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Tasks — Kubernetes Lab</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; background:#0f172a; color:#e2e8f0; }
+  h1 { font-size: 1.4rem; }
+  form { display: flex; gap: 8px; margin-bottom: 20px; }
+  input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
+  button { padding: 8px 14px; border-radius: 6px; border: none; background:#3b82f6; color:white; cursor:pointer; }
+  ul { list-style: none; padding: 0; }
+  li { padding: 10px; border-bottom: 1px solid #1e293b; display:flex; justify-content:space-between; }
+  small { color:#94a3b8; }
+  #status { font-size: 0.85rem; color:#94a3b8; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <h1>tasks-api — demo Kubernetes</h1>
+  <div id="status">Consultando /api/ready...</div>
+  <form id="form">
+    <input id="title" placeholder="Nueva tarea" required />
+    <button type="submit">Agregar</button>
+  </form>
+  <ul id="list"></ul>
+
+<script>
+  const API = '/api';
+
+  async function checkReady() {
+    const statusEl = document.getElementById('status');
+    try {
+      const r = await fetch(`${API}/ready`);
+      const data = await r.json();
+      statusEl.textContent = r.ok
+        ? `Backend OK — DB: ${data.db}`
+        : `Backend no listo: ${JSON.stringify(data)}`;
+    } catch (e) {
+      statusEl.textContent = 'No se pudo contactar la API (' + e.message + ')';
+    }
+  }
+
+  async function loadTasks() {
+    const list = document.getElementById('list');
+    list.innerHTML = '<li>Cargando...</li>';
+    try {
+      const r = await fetch(`${API}/tasks`);
+      const tasks = await r.json();
+      list.innerHTML = '';
+      if (!tasks.length) {
+        list.innerHTML = '<li>Sin tareas todavía</li>';
+      }
+      tasks.forEach(t => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${t.title}</span><small>#${t.id}</small>`;
+        list.appendChild(li);
+      });
+    } catch (e) {
+      list.innerHTML = `<li>Error cargando tareas: ${e.message}</li>`;
+    }
+  }
+
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('title');
+    if (!input.value.trim()) return;
+    await fetch(`${API}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: input.value.trim() })
+    });
+    input.value = '';
+    loadTasks();
+  });
+
+  checkReady();
+  loadTasks();
+</script>
+</body>
+</html>

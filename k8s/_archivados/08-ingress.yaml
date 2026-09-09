@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tasks-api-ingress
+  namespace: k8s-demo
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: tasks.local
+      http:
+        paths:
+          # /api/tasks -> tasks-api recibe /tasks (se le quita el prefijo /api)
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: tasks-api
+                port:
+                  number: 80
+          # Todo lo demás -> frontend estático
+          - path: /(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: tasks-web
+                port:
+                  number: 80

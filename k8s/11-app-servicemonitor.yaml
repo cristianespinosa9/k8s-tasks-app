@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tasks-api
+  namespace: k8s-demo
+  labels:
+    # El chart kube-prometheus-stack, por defecto, solo descubre ServiceMonitors
+    # que tengan el label "release: <nombre-del-release-de-helm>".
+    # Instalamos el chart con "helm install monitoring ..." -> release = monitoring
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - k8s-demo
+  selector:
+    matchLabels:
+      app: tasks-api
+  endpoints:
+    - port: http        # debe coincidir con el "name" del puerto en el Service
+      path: /metrics
+      interval: 15s

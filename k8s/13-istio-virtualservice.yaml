@@ -5,7 +5,7 @@ metadata:
   namespace: k8s-demo
 spec:
   hosts:
-    - "tasks.local"
+    - "*"
   gateways:
     - tasks-gateway
   http:

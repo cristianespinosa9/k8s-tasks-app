@@ -2,3 +2,4 @@ node_modules/
 *.log
 vault-lab-credentials/
 .env
+*:Zone.Identifier

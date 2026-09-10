@@ -12,18 +12,26 @@ spec:
     metadata:
       labels:
         app: tasks-api
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "tasks-api"
+        vault.hashicorp.com/agent-inject-secret-db.env: "secret/data/tasks-api/db"
+        vault.hashicorp.com/agent-inject-template-db.env: |
+          {{- with secret "secret/data/tasks-api/db" -}}
+          {{- range $k, $v := .Data.data }}
+          export {{ $k }}={{ $v }}
+          {{- end }}
+          {{- end }}
     spec:
       containers:
         - name: tasks-api
-          image: tasks-api:latest
-          imagePullPolicy: IfNotPresent   # clave para clústeres locales (kind/minikube)
+          image: ghcr.io/cristianespinosa9/tasks-api:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
           envFrom:
             - configMapRef:
                 name: app-config
-            - secretRef:
-                name: postgres-secret
           readinessProbe:
             httpGet:
               path: /ready

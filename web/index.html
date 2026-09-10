@@ -7,11 +7,16 @@
   body { font-family: system-ui, sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; background:#0f172a; color:#e2e8f0; }
   h1 { font-size: 1.4rem; }
   form { display: flex; gap: 8px; margin-bottom: 20px; }
-  input { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
+  input[type="text"] { flex: 1; padding: 8px; border-radius: 6px; border: 1px solid #334155; background:#1e293b; color:#e2e8f0; }
   button { padding: 8px 14px; border-radius: 6px; border: none; background:#3b82f6; color:white; cursor:pointer; }
+  button:hover { background:#2563eb; }
   ul { list-style: none; padding: 0; }
-  li { padding: 10px; border-bottom: 1px solid #1e293b; display:flex; justify-content:space-between; }
-  small { color:#94a3b8; }
+  li { padding: 10px 0; border-bottom: 1px solid #1e293b; display:flex; align-items:center; gap: 10px; }
+  li.done span { text-decoration: line-through; color:#64748b; }
+  li span { flex: 1; }
+  li small { color:#94a3b8; }
+  .icon-btn { background: transparent; padding: 4px 8px; font-size: 1rem; }
+  .icon-btn:hover { background:#1e293b; }
   #status { font-size: 0.85rem; color:#94a3b8; margin-bottom: 12px; }
 </style>
 </head>
@@ -19,7 +24,7 @@
   <h1>tasks-api — demo Kubernetes</h1>
   <div id="status">Consultando /api/ready...</div>
   <form id="form">
-    <input id="title" placeholder="Nueva tarea" required />
+    <input id="title" type="text" placeholder="Nueva tarea" required />
     <button type="submit">Agregar</button>
   </form>
   <ul id="list"></ul>
@@ -49,15 +54,49 @@
       list.innerHTML = '';
       if (!tasks.length) {
         list.innerHTML = '<li>Sin tareas todavía</li>';
+        return;
       }
       tasks.forEach(t => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>${t.title}</span><small>#${t.id}</small>`;
+        if (t.done) li.classList.add('done');
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = t.done;
+        checkbox.addEventListener('change', () => toggleTask(t.id, checkbox.checked));
+
+        const span = document.createElement('span');
+        span.textContent = t.title;
+
+        const small = document.createElement('small');
+        small.textContent = `#${t.id}`;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'icon-btn';
+        deleteBtn.textContent = '🗑️';
+        deleteBtn.title = 'Eliminar';
+        deleteBtn.addEventListener('click', () => deleteTask(t.id));
+
+        li.append(checkbox, span, small, deleteBtn);
         list.appendChild(li);
       });
     } catch (e) {
       list.innerHTML = `<li>Error cargando tareas: ${e.message}</li>`;
     }
+  }
+
+  async function toggleTask(id, done) {
+    await fetch(`${API}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done }),
+    });
+    loadTasks();
+  }
+
+  async function deleteTask(id) {
+    await fetch(`${API}/tasks/${id}`, { method: 'DELETE' });
+    loadTasks();
   }
 
   document.getElementById('form').addEventListener('submit', async (e) => {

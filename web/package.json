@@ -1,0 +1,12 @@
+{
+  "name": "tasks-web",
+  "version": "1.0.0",
+  "description": "Frontend de tasks-api, servido con Express",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

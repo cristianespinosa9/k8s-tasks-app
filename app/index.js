@@ -105,10 +105,43 @@ app.post('/tasks', async (req, res) => {
   }
 });
 
+app.patch('/tasks/:id', async (req, res) => {
+  const { id } = req.params;
+  const { done } = req.body;
+  if (typeof done !== 'boolean') {
+    return res.status(400).json({ error: 'done debe ser true o false' });
+  }
+  try {
+    const result = await pool.query(
+      'UPDATE tasks SET done = $1 WHERE id = $2 RETURNING id, title, done, created_at',
+      [done, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/tasks/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tarea no encontrada' });
+    }
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({
     service: 'tasks-api',
-    endpoints: ['/health', '/ready', 'GET /tasks', 'POST /tasks'],
+    endpoints: ['/health', '/ready', '/metrics', 'GET /tasks', 'POST /tasks', 'PATCH /tasks/:id', 'DELETE /tasks/:id'],
   });
 });
 

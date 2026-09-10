@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tasks — Kubernetes Lab</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    max-width: 560px;
+    margin: 40px auto;
+    padding: 0 16px;
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 16px; }
+
+  #status {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    background: #1e293b;
+  }
+  #status.ok { color: #4ade80; }
+  #status.error { color: #f87171; }
+
+  form { display: flex; gap: 8px; margin-bottom: 16px; }
+  input[type="text"] {
+    flex: 1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+    font-size: 0.95rem;
+  }
+  input[type="text"]:focus { outline: 2px solid #3b82f6; border-color: transparent; }
+  button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    background: #3b82f6;
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  button:hover { background: #2563eb; }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .filters { display: flex; gap: 6px; }
+  .filter-btn {
+    background: transparent;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    border-radius: 20px;
+  }
+  .filter-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+  .filter-btn:hover { background: #1e293b; }
+  .filter-btn.active:hover { background: #2563eb; }
+
+  .counter { font-size: 0.8rem; color: #64748b; }
+
+  .clear-btn {
+    background: transparent;
+    color: #f87171;
+    font-size: 0.8rem;
+    padding: 4px 8px;
+  }
+  .clear-btn:hover { background: #1e293b; }
+
+  ul { list-style: none; padding: 0; margin: 0; }
+  li {
+    padding: 12px 4px;
+    border-bottom: 1px solid #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  li.done .task-title { text-decoration: line-through; color: #64748b; }
+  li input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; }
+
+  .task-body { flex: 1; min-width: 0; }
+  .task-title {
+    display: block;
+    cursor: text;
+    padding: 2px 4px;
+    border-radius: 4px;
+    word-break: break-word;
+  }
+  .task-title:hover { background: #1e293b; }
+  .task-title[contenteditable="true"] {
+    background: #1e293b;
+    outline: 1px solid #3b82f6;
+  }
+  .task-meta { font-size: 0.72rem; color: #64748b; margin-top: 2px; }
+
+  .icon-btn {
+    background: transparent;
+    padding: 4px 8px;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .icon-btn:hover { background: #1e293b; }
+
+  .empty-state {
+    text-align: center;
+    color: #64748b;
+    padding: 32px 0;
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+  <h1>tasks-api — demo Kubernetes</h1>
+  <div class="subtitle">frontend Node.js/Express · backend Express en capas · Postgres · Vault · Istio</div>
+  <div id="status">Consultando /api/ready...</div>
+
+  <form id="form">
+    <input id="title" type="text" placeholder="Nueva tarea" required autocomplete="off" />
+    <button type="submit">Agregar</button>
+  </form>
+
+  <div class="toolbar">
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">Todas</button>
+      <button class="filter-btn" data-filter="pending">Pendientes</button>
+      <button class="filter-btn" data-filter="done">Completadas</button>
+    </div>
+    <span class="counter" id="counter"></span>
+  </div>
+
+  <ul id="list"></ul>
+
+  <div class="toolbar" id="clearBar" style="display:none;">
+    <span></span>
+    <button class="clear-btn" id="clearCompleted">Limpiar completadas</button>
+  </div>
+
+<script>
+  const API = '/api';
+  let tasks = [];
+  let filter = 'all';
+
+  async function checkReady() {
+    const statusEl = document.getElementById('status');
+    try {
+      const r = await fetch(`${API}/ready`);
+      const data = await r.json();
+      statusEl.className = r.ok ? 'ok' : 'error';
+      statusEl.textContent = r.ok
+        ? `Backend OK — DB: ${data.db}`
+        : `Backend no listo: ${JSON.stringify(data)}`;
+    } catch (e) {
+      statusEl.className = 'error';
+      statusEl.textContent = 'No se pudo contactar la API (' + e.message + ')';
+    }
+  }
+
+  function timeAgo(dateStr) {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'hace un momento';
+    if (mins < 60) return `hace ${mins} min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `hace ${hours} h`;
+    const days = Math.floor(hours / 24);
+    return `hace ${days} d`;
+  }
+
+  function updateCounter() {
+    const pending = tasks.filter(t => !t.done).length;
+    const done = tasks.filter(t => t.done).length;
+    document.getElementById('counter').textContent =
+      tasks.length ? `${pending} pendientes · ${done} completadas` : '';
+    document.getElementById('clearBar').style.display = done > 0 ? 'flex' : 'none';
+  }
+
+  function render() {
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+
+    const filtered = tasks.filter(t => {
+      if (filter === 'pending') return !t.done;
+      if (filter === 'done') return t.done;
+      return true;
+    });
+
+    if (!filtered.length) {
+      const msg = tasks.length
+        ? 'No hay tareas en este filtro'
+        : 'Sin tareas todavía — agrega la primera arriba';
+      list.innerHTML = `<div class="empty-state">${msg}</div>`;
+      updateCounter();
+      return;
+    }
+
+    filtered.forEach(t => {
+      const li = document.createElement('li');
+      if (t.done) li.classList.add('done');
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = t.done;
+      checkbox.addEventListener('change', () => toggleTask(t.id, checkbox.checked));
+
+      const body = document.createElement('div');
+      body.className = 'task-body';
+
+      const titleEl = document.createElement('span');
+      titleEl.className = 'task-title';
+      titleEl.textContent = t.title;
+      titleEl.title = 'Clic para editar';
+      titleEl.addEventListener('click', () => startEdit(titleEl, t));
+
+      const meta = document.createElement('div');
+      meta.className = 'task-meta';
+      meta.textContent = `#${t.id} · ${timeAgo(t.created_at)}`;
+
+      body.append(titleEl, meta);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'icon-btn';
+      deleteBtn.textContent = '🗑️';
+      deleteBtn.title = 'Eliminar';
+      deleteBtn.addEventListener('click', () => deleteTask(t.id));
+
+      li.append(checkbox, body, deleteBtn);
+      list.appendChild(li);
+    });
+
+    updateCounter();
+  }
+
+  function startEdit(titleEl, task) {
+    titleEl.contentEditable = 'true';
+    titleEl.focus();
+    document.execCommand('selectAll', false, null);
+
+    const finish = async (save) => {
+      titleEl.contentEditable = 'false';
+      const newTitle = titleEl.textContent.trim();
+      if (save && newTitle && newTitle !== task.title) {
+        await updateTitle(task.id, newTitle);
+      } else {
+        titleEl.textContent = task.title;
+      }
+    };
+
+    titleEl.addEventListener('blur', () => finish(true), { once: true });
+    titleEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); }
+      if (e.key === 'Escape') { titleEl.textContent = task.title; titleEl.blur(); }
+    });
+  }
+
+  async function loadTasks() {
+    try {
+      const r = await fetch(`${API}/tasks`);
+      tasks = await r.json();
+      render();
+    } catch (e) {
+      document.getElementById('list').innerHTML =
+        `<div class="empty-state">Error cargando tareas: ${e.message}</div>`;
+    }
+  }
+
+  async function toggleTask(id, done) {
+    await fetch(`${API}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done }),
+    });
+    loadTasks();
+  }
+
+  async function updateTitle(id, title) {
+    await fetch(`${API}/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    });
+    loadTasks();
+  }
+
+  async function deleteTask(id) {
+    await fetch(`${API}/tasks/${id}`, { method: 'DELETE' });
+    loadTasks();
+  }
+
+  async function clearCompleted() {
+    const completed = tasks.filter(t => t.done);
+    await Promise.all(completed.map(t => fetch(`${API}/tasks/${t.id}`, { method: 'DELETE' })));
+    loadTasks();
+  }
+
+  document.getElementById('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = document.getElementById('title');
+    if (!input.value.trim()) return;
+    await fetch(`${API}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: input.value.trim() })
+    });
+    input.value = '';
+    loadTasks();
+  });
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filter = btn.dataset.filter;
+      render();
+    });
+  });
+
+  document.getElementById('clearCompleted').addEventListener('click', clearCompleted);
+
+  checkReady();
+  loadTasks();
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    type: Recreate   # con 1 réplica y volumen RWO, evita 2 pods peleando por el PVC
+    type: Recreate
   selector:
     matchLabels:
       app: postgres
@@ -14,19 +14,32 @@ spec:
     metadata:
       labels:
         app: postgres
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "tasks-api"
+        vault.hashicorp.com/agent-inject-secret-db.env: "secret/data/tasks-api/db"
+        vault.hashicorp.com/agent-inject-template-db.env: |
+          {{- with secret "secret/data/tasks-api/db" -}}
+          {{- range $k, $v := .Data.data }}
+          export {{ $k }}={{ $v }}
+          {{- end }}
+          {{- end }}
     spec:
       containers:
         - name: postgres
           image: postgres:16-alpine
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -a
+              [ -f /vault/secrets/db.env ] && . /vault/secrets/db.env
+              exec docker-entrypoint.sh postgres
           ports:
             - containerPort: 5432
-          envFrom:
-            - secretRef:
-                name: postgres-secret
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
-              subPath: postgres   # evita el problema de lost+found en el volumen raíz
+              subPath: postgres
           readinessProbe:
             exec:
               command: ["pg_isready", "-U", "tasksuser", "-d", "tasksdb"]

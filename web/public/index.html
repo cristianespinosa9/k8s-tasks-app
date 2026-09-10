@@ -3,150 +3,264 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Tasks — Kubernetes Lab</title>
+<title>TaskFlow — Panel de Tareas</title>
 <style>
+  :root {
+    --navy-900: #0a1628;
+    --navy-800: #0f2038;
+    --navy-700: #16304f;
+    --navy-600: #1e3a5f;
+    --border: #23456e;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-light: #60a5fa;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --success: #22c55e;
+    --danger: #ef4444;
+  }
   * { box-sizing: border-box; }
   body {
-    font-family: system-ui, -apple-system, sans-serif;
-    max-width: 560px;
-    margin: 40px auto;
-    padding: 0 16px;
-    background: #0f172a;
-    color: #e2e8f0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    margin: 0;
+    background: var(--navy-900);
+    color: var(--text-primary);
   }
-  h1 { font-size: 1.4rem; margin-bottom: 4px; }
-  .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 16px; }
+
+  /* ---- Barra superior ---- */
+  .topbar {
+    background: var(--navy-800);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem;
+  }
+  .env-badge {
+    font-size: 0.72rem;
+    color: var(--accent-light);
+    border: 1px solid var(--accent);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.03em;
+  }
+
+  /* ---- Banner / hero ---- */
+  .banner {
+    background: linear-gradient(135deg, var(--navy-700) 0%, var(--navy-800) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 36px 24px;
+    text-align: center;
+  }
+  .banner h1 { margin: 0 0 6px; font-size: 1.7rem; letter-spacing: -0.01em; }
+  .banner p { margin: 0; color: var(--text-secondary); font-size: 0.95rem; }
+  .stack-badges {
+    display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 16px;
+  }
+  .badge {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    background: var(--navy-600);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* ---- Contenido ---- */
+  .container { max-width: 640px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  .card {
+    background: var(--navy-800);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  }
 
   #status {
     font-size: 0.85rem;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 8px;
     margin-bottom: 16px;
-    background: #1e293b;
+    background: var(--navy-600);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
-  #status.ok { color: #4ade80; }
-  #status.error { color: #f87171; }
+  #status::before { content: '●'; font-size: 0.7rem; }
+  #status.ok { color: var(--success); }
+  #status.error { color: var(--danger); }
 
-  form { display: flex; gap: 8px; margin-bottom: 16px; }
+  form { display: flex; gap: 8px; margin-bottom: 18px; }
   input[type="text"] {
     flex: 1;
-    padding: 10px 12px;
+    padding: 11px 14px;
     border-radius: 8px;
-    border: 1px solid #334155;
-    background: #1e293b;
-    color: #e2e8f0;
+    border: 1px solid var(--border);
+    background: var(--navy-700);
+    color: var(--text-primary);
     font-size: 0.95rem;
   }
-  input[type="text"]:focus { outline: 2px solid #3b82f6; border-color: transparent; }
+  input[type="text"]::placeholder { color: var(--text-muted); }
+  input[type="text"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.25); }
   button {
-    padding: 10px 16px;
+    padding: 11px 18px;
     border-radius: 8px;
     border: none;
-    background: #3b82f6;
+    background: var(--accent);
     color: white;
     cursor: pointer;
     font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.15s;
   }
-  button:hover { background: #2563eb; }
+  button:hover { background: var(--accent-hover); }
 
   .toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     flex-wrap: wrap;
     gap: 8px;
   }
   .filters { display: flex; gap: 6px; }
   .filter-btn {
     background: transparent;
-    border: 1px solid #334155;
-    color: #94a3b8;
-    padding: 6px 12px;
-    font-size: 0.82rem;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
     border-radius: 20px;
   }
-  .filter-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
-  .filter-btn:hover { background: #1e293b; }
-  .filter-btn.active:hover { background: #2563eb; }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .filter-btn:hover { border-color: var(--accent-light); }
+  .filter-btn.active:hover { background: var(--accent-hover); }
 
-  .counter { font-size: 0.8rem; color: #64748b; }
+  .counter { font-size: 0.78rem; color: var(--text-muted); }
 
   .clear-btn {
     background: transparent;
-    color: #f87171;
-    font-size: 0.8rem;
+    color: var(--danger);
+    font-size: 0.78rem;
     padding: 4px 8px;
+    font-weight: 500;
   }
-  .clear-btn:hover { background: #1e293b; }
+  .clear-btn:hover { background: rgba(239,68,68,0.1); }
 
   ul { list-style: none; padding: 0; margin: 0; }
   li {
-    padding: 12px 4px;
-    border-bottom: 1px solid #1e293b;
+    padding: 13px 4px;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
   }
-  li.done .task-title { text-decoration: line-through; color: #64748b; }
-  li input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; }
+  li:last-child { border-bottom: none; }
+  li.done .task-title { text-decoration: line-through; color: var(--text-muted); }
+  li input[type="checkbox"] {
+    width: 19px; height: 19px; cursor: pointer; flex-shrink: 0;
+    accent-color: var(--accent);
+  }
 
   .task-body { flex: 1; min-width: 0; }
   .task-title {
     display: block;
     cursor: text;
-    padding: 2px 4px;
+    padding: 2px 6px;
     border-radius: 4px;
     word-break: break-word;
   }
-  .task-title:hover { background: #1e293b; }
+  .task-title:hover { background: var(--navy-600); }
   .task-title[contenteditable="true"] {
-    background: #1e293b;
-    outline: 1px solid #3b82f6;
+    background: var(--navy-700);
+    outline: 1px solid var(--accent);
   }
-  .task-meta { font-size: 0.72rem; color: #64748b; margin-top: 2px; }
+  .task-meta { font-size: 0.72rem; color: var(--text-muted); margin-top: 3px; }
 
   .icon-btn {
     background: transparent;
-    padding: 4px 8px;
+    padding: 5px 9px;
     font-size: 1rem;
     flex-shrink: 0;
+    border-radius: 6px;
   }
-  .icon-btn:hover { background: #1e293b; }
+  .icon-btn:hover { background: rgba(239,68,68,0.12); }
 
   .empty-state {
     text-align: center;
-    color: #64748b;
-    padding: 32px 0;
+    color: var(--text-muted);
+    padding: 36px 0;
     font-size: 0.9rem;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding: 20px;
   }
 </style>
 </head>
 <body>
-  <h1>tasks-api — demo Kubernetes</h1>
-  <div class="subtitle">frontend Node.js/Express · backend Express en capas · Postgres · Vault · Istio</div>
-  <div id="status">Consultando /api/ready...</div>
 
-  <form id="form">
-    <input id="title" type="text" placeholder="Nueva tarea" required autocomplete="off" />
-    <button type="submit">Agregar</button>
-  </form>
-
-  <div class="toolbar">
-    <div class="filters">
-      <button class="filter-btn active" data-filter="all">Todas</button>
-      <button class="filter-btn" data-filter="pending">Pendientes</button>
-      <button class="filter-btn" data-filter="done">Completadas</button>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">✓</div>
+      TaskFlow
     </div>
-    <span class="counter" id="counter"></span>
+    <span class="env-badge">LAB · KUBERNETES</span>
   </div>
 
-  <ul id="list"></ul>
-
-  <div class="toolbar" id="clearBar" style="display:none;">
-    <span></span>
-    <button class="clear-btn" id="clearCompleted">Limpiar completadas</button>
+  <div class="banner">
+    <h1>Panel de Gestión de Tareas</h1>
+    <p>Aplicación de referencia desplegada en Kubernetes — microservicios, service mesh y gestión de secretos.</p>
+    <div class="stack-badges">
+      <span class="badge">Node.js / Express</span>
+      <span class="badge">PostgreSQL</span>
+      <span class="badge">HashiCorp Vault</span>
+      <span class="badge">Istio</span>
+      <span class="badge">Prometheus</span>
+    </div>
   </div>
+
+  <div class="container">
+    <div class="card">
+      <div id="status">Consultando /api/ready...</div>
+
+      <form id="form">
+        <input id="title" type="text" placeholder="Nueva tarea" required autocomplete="off" />
+        <button type="submit">Agregar</button>
+      </form>
+
+      <div class="toolbar">
+        <div class="filters">
+          <button class="filter-btn active" data-filter="all">Todas</button>
+          <button class="filter-btn" data-filter="pending">Pendientes</button>
+          <button class="filter-btn" data-filter="done">Completadas</button>
+        </div>
+        <span class="counter" id="counter"></span>
+      </div>
+
+      <ul id="list"></ul>
+
+      <div class="toolbar" id="clearBar" style="display:none;">
+        <span></span>
+        <button class="clear-btn" id="clearCompleted">Limpiar completadas</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Laboratorio de Kubernetes · tasks-api + tasks-web + postgres + vault + istio</footer>
 
 <script>
   const API = '/api';

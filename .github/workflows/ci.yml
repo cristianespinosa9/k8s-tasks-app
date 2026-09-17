@@ -52,7 +52,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Escanear con Trivy
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.name }}:scan
           format: 'sarif'
@@ -68,7 +68,7 @@ jobs:
           category: ${{ matrix.name }}
 
       - name: Fallar el build si hay CRITICAL
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.name }}:scan
           format: 'table'

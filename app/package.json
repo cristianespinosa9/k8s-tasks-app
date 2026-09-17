@@ -1,7 +1,7 @@
 {
   "name": "tasks-api",
   "version": "1.0.0",
-  "description": "API mínima de tareas para aprender Kubernetes paso a paso",
+  "description": "API m\u00ednima de tareas para aprender Kubernetes paso a paso",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
